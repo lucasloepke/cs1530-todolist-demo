@@ -15,10 +15,20 @@ export default function App() {
   })
   const [input, setInput] = useState('')
   const [filter, setFilter] = useState('all')
+  const [editingId, setEditingId] = useState(null)
+  const [editValue, setEditValue] = useState('')
+  const [blurBlock] = useState(() => ({ next: false }))
 
   useEffect(() => {
     localStorage.setItem('todos', JSON.stringify(todos))
   }, [todos])
+
+  useEffect(() => {
+    if (editingId === null) return
+    const el = document.getElementById('todo-inline-edit-input')
+    el?.focus()
+    el?.select()
+  }, [editingId])
 
   const addTodo = () => {
     const text = input.trim()
@@ -30,7 +40,37 @@ export default function App() {
   const toggleTodo = (id) =>
     setTodos(todos.map((t) => (t.id === id ? { ...t, done: !t.done } : t)))
 
-  const deleteTodo = (id) => setTodos(todos.filter((t) => t.id !== id))
+  const deleteTodo = (id) => {
+    setTodos(todos.filter((t) => t.id !== id))
+    if (editingId === id) setEditingId(null)
+  }
+
+  const startEdit = (todo) => {
+    setEditingId(todo.id)
+    setEditValue(todo.text)
+  }
+
+  const applyEdit = (id) => {
+    const t = editValue.trim()
+    if (t === '') {
+      setTodos((prev) => prev.filter((x) => x.id !== id))
+    } else {
+      setTodos((prev) =>
+        prev.map((x) => (x.id === id ? { ...x, text: t } : x)),
+      )
+    }
+    setEditingId(null)
+    setEditValue('')
+  }
+
+  const onEditBlur = (id) => {
+    if (blurBlock.next) {
+      blurBlock.next = false
+      return
+    }
+    if (editingId !== id) return
+    applyEdit(id)
+  }
 
   const visible = todos.filter((t) =>
     filter === 'active' ? !t.done : filter === 'completed' ? t.done : true,
@@ -85,14 +125,39 @@ export default function App() {
               key={todo.id}
               className="flex items-center gap-3 px-3 py-2 rounded-md border border-slate-200 hover:bg-slate-50"
             >
-              <button
-                onClick={() => toggleTodo(todo.id)}
-                className={`flex-1 text-left ${
-                  todo.done ? 'line-through text-slate-400' : 'text-slate-800'
-                }`}
-              >
-                {todo.text}
-              </button>
+              {editingId === todo.id ? (
+                <input
+                  id="todo-inline-edit-input"
+                  type="text"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      blurBlock.next = true
+                      applyEdit(todo.id)
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault()
+                      blurBlock.next = true
+                      setEditingId(null)
+                      setEditValue('')
+                    }
+                  }}
+                  onBlur={() => onEditBlur(todo.id)}
+                  className="flex-1 min-w-0 px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => toggleTodo(todo.id)}
+                  onDoubleClick={() => startEdit(todo)}
+                  className={`flex-1 min-w-0 text-left ${
+                    todo.done ? 'line-through text-slate-400' : 'text-slate-800'
+                  }`}
+                >
+                  {todo.text}
+                </button>
+              )}
               <button
                 onClick={() => deleteTodo(todo.id)}
                 className="text-slate-400 hover:text-red-500 text-lg font-bold px-2"
