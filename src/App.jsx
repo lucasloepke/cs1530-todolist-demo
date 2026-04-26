@@ -1,13 +1,24 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function App() {
-  const [todos, setTodos] = useState([
-    { id: 1, text: 'Read a book', done: false },
-    { id: 2, text: 'Go for a walk', done: true },
-    { id: 3, text: 'Write some code', done: false },
-  ])
+  const [todos, setTodos] = useState(() => {
+    try {
+      const stored = localStorage.getItem('todos')
+      return stored ? JSON.parse(stored) : [
+        { id: 1, text: 'Read a book', done: false },
+        { id: 2, text: 'Go for a walk', done: true },
+        { id: 3, text: 'Write some code', done: false },
+      ]
+    } catch {
+      return []
+    }
+  })
   const [input, setInput] = useState('')
   const [filter, setFilter] = useState('all')
+
+  useEffect(() => {
+    localStorage.setItem('todos', JSON.stringify(todos))
+  }, [todos])
 
   const addTodo = () => {
     const text = input.trim()
